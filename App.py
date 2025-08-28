@@ -11,66 +11,61 @@ from pandas.api.types import (
 import pandas as pd
 import numpy as np
 import streamlit as st
+import io # Necessário para manipulação de bytes em memória
 
 # Módulos para a geração de PDF (com a sintaxe moderna)
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
 # ----------------------------------------------------
-# 2. FUNÇÃO PARA GERAR O PDF (VERSÃO FINAL CORRIGIDA)
+# 2. FUNÇÕES DE CONVERSÃO DE ARQUIVOS
 # ----------------------------------------------------
+
+# --- FUNÇÃO PARA GERAR O PDF (EXISTENTE) ---
 def dataframe_to_pdf(df: pd.DataFrame) -> bytes:
     """
     Converte um DataFrame do Pandas em um arquivo PDF e retorna em bytes.
-    Usa a sintaxe atualizada da biblioteca fpdf2.
     """
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
-    
-    # Define a fonte. 'Helvetica' é uma fonte padrão segura.
     pdf.set_font('Helvetica', '', 8)
-    
-    # Calcula a largura das colunas dinamicamente para preencher a página
     col_width = pdf.w / (len(df.columns) + 1)
     row_height = 8
     
-    # --- Cabeçalho da Tabela ---
-    pdf.set_fill_color(200, 220, 255) # Cor de fundo azul claro para o cabeçalho
+    pdf.set_fill_color(200, 220, 255)
     for col_name in df.columns:
-        # Usa a sintaxe moderna (new_x, new_y) para posicionar a próxima célula
         pdf.cell(
-            col_width, 
-            row_height, 
-            str(col_name), 
-            border=1, 
-            align='C', 
-            fill=True, 
-            new_x=XPos.RIGHT, 
-            new_y=YPos.TOP
+            col_width, row_height, str(col_name), border=1, align='C', fill=True, 
+            new_x=XPos.RIGHT, new_y=YPos.TOP
         )
-    pdf.ln(row_height) # Pula para a próxima linha
+    pdf.ln(row_height)
     
-    # --- Linhas de Dados da Tabela ---
-    pdf.set_fill_color(255, 255, 255) # Fundo branco para as células de dados
+    pdf.set_fill_color(255, 255, 255)
     for index, row in df.iterrows():
-        # Itera sobre cada item na linha
         for item in row:
-            # Limita o texto para evitar que ele "estoure" a célula
             text = str(item)[:35] 
             pdf.cell(
-                col_width, 
-                row_height, 
-                text, 
-                border=1, 
-                align='L', 
-                fill=True, 
-                new_x=XPos.RIGHT, 
-                new_y=YPos.TOP
+                col_width, row_height, text, border=1, align='L', fill=True, 
+                new_x=XPos.RIGHT, new_y=YPos.TOP
             )
-        pdf.ln(row_height) # Pula para a próxima linha ao final de cada linha de dados
+        pdf.ln(row_height)
         
-    # CORREÇÃO FINAL: Garante que o output seja do tipo 'bytes' e não 'bytearray'
     return bytes(pdf.output())
+
+# --- NOVA FUNÇÃO PARA GERAR O EXCEL ---
+def dataframe_to_excel(df: pd.DataFrame) -> bytes:
+    """
+    Converte um DataFrame do Pandas em um arquivo Excel .xlsx e retorna em bytes.
+    """
+    # Cria um buffer de bytes em memória
+    output = io.BytesIO()
+    # Cria um escritor de Excel que escreve no buffer
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Escreve o DataFrame no Excel, sem o índice do Pandas
+        df.to_excel(writer, index=False, sheet_name='Relatorio')
+    # Pega os bytes do buffer
+    processed_data = output.getvalue()
+    return processed_data
 
 # ----------------------------------
 # 3. CONFIGURAÇÃO DA PÁGINA STREAMLIT
@@ -162,16 +157,29 @@ try:
     # Exibe o DataFrame filtrado na tela
     st.dataframe(df_filtrado)
 
-    # Gera o PDF a partir do DataFrame *filtrado*
+    # Prepara os dados para download
     pdf_bytes = dataframe_to_pdf(df_filtrado)
+    excel_bytes = dataframe_to_excel(df_filtrado)
 
-    # Cria o botão de download com os dados do PDF gerado
-    st.download_button(
-        label="Baixar Relatório em PDF",
-        data=pdf_bytes,
-        file_name="relatorio_filtrado_to.pdf",
-        mime='application/pdf' # O tipo MIME correto para arquivos PDF
-    )
+    # --- Cria os botões de download lado a lado ---
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.download_button(
+            label="⬇️ Baixar Relatório em PDF",
+            data=pdf_bytes,
+            file_name="relatorio_filtrado_to.pdf",
+            mime='application/pdf'
+        )
+
+    with col2:
+        st.download_button(
+            label="⬇️ Baixar Relatório em Excel",
+            data=excel_bytes,
+            file_name="relatorio_filtrado_to.xlsx",
+            # O MIME type para arquivos .xlsx
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
 
 except FileNotFoundError:
     st.error("Erro: Arquivo 'RelatorioMecTerapiaOcupacional.csv' não encontrado. Por favor, verifique se o arquivo está na mesma pasta do seu script.")
