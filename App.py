@@ -1,6 +1,7 @@
 # -------------------
 # 1. IMPORTAÇÕES
 # -------------------
+# Módulos do Streamlit e Pandas
 from pandas.api.types import (
     is_categorical_dtype,
     is_datetime64_any_dtype,
@@ -11,33 +12,32 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 
-# Importações para a geração de PDF
+# Módulos para a geração de PDF (com a sintaxe moderna)
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
 # ----------------------------------------------------
-# 2. FUNÇÃO PARA GERAR O PDF (VERSÃO ATUALIZADA)
+# 2. FUNÇÃO PARA GERAR O PDF (VERSÃO FINAL)
 # ----------------------------------------------------
 def dataframe_to_pdf(df: pd.DataFrame) -> bytes:
     """
     Converte um DataFrame do Pandas em um arquivo PDF e retorna em bytes.
-    O PDF será em modo paisagem para melhor visualização de tabelas largas.
+    Usa a sintaxe atualizada da biblioteca fpdf2.
     """
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     
-    # Adiciona uma fonte que suporte caracteres latinos
-    # Para suporte completo a UTF-8, seria necessário adicionar uma fonte .ttf específica
-    pdf.set_font('Arial', '', 8)
+    # Define a fonte. 'Helvetica' é uma fonte padrão segura.
+    pdf.set_font('Helvetica', '', 8)
     
-    # Calcula a largura das colunas de forma dinâmica
+    # Calcula a largura das colunas dinamicamente para preencher a página
     col_width = pdf.w / (len(df.columns) + 1)
     row_height = 8
     
-    # Adiciona o cabeçalho da tabela
+    # --- Cabeçalho da Tabela ---
     pdf.set_fill_color(200, 220, 255) # Cor de fundo azul claro para o cabeçalho
     for col_name in df.columns:
-        # Usa a sintaxe moderna para posicionamento (corrige o DeprecationWarning)
+        # Usa a sintaxe moderna (new_x, new_y) para posicionar a próxima célula
         pdf.cell(
             col_width, 
             row_height, 
@@ -48,15 +48,15 @@ def dataframe_to_pdf(df: pd.DataFrame) -> bytes:
             new_x=XPos.RIGHT, 
             new_y=YPos.TOP
         )
-    pdf.ln(row_height)
+    pdf.ln(row_height) # Pula para a próxima linha
     
-    # Adiciona as linhas de dados da tabela
+    # --- Linhas de Dados da Tabela ---
     pdf.set_fill_color(255, 255, 255) # Fundo branco para as células de dados
     for index, row in df.iterrows():
-        # Limita o número de caracteres por célula para evitar quebra de layout
+        # Itera sobre cada item na linha
         for item in row:
-            text = str(item)[:35] # Pega os primeiros 35 caracteres do texto
-            # Usa a sintaxe moderna para posicionamento
+            # Limita o texto para evitar que ele "estoure" a célula
+            text = str(item)[:35] 
             pdf.cell(
                 col_width, 
                 row_height, 
@@ -67,14 +67,13 @@ def dataframe_to_pdf(df: pd.DataFrame) -> bytes:
                 new_x=XPos.RIGHT, 
                 new_y=YPos.TOP
             )
-        pdf.ln(row_height)
+        pdf.ln(row_height) # Pula para a próxima linha ao final de cada linha de dados
         
-    # Retorna o PDF como bytes (corrige o AttributeError)
-    # A função .output() sem argumentos já retorna os bytes necessários.
+    # Retorna o PDF como bytes diretamente (sintaxe correta para versões novas)
     return pdf.output()
 
 # ----------------------------------
-# 3. CONFIGURAÇÃO DA PÁGINA
+# 3. CONFIGURAÇÃO DA PÁGINA STREAMLIT
 # ----------------------------------
 st.set_page_config(
     page_title="Análise do Banco de dados E-MEC - Terapia Ocupacional",
@@ -85,11 +84,11 @@ st.set_page_config(
 st.title('Análise do Banco de dados E-MEC - Terapia Ocupacional')
 
 # -------------------------------------------------
-# 4. FUNÇÃO DE FILTRO DO DATAFRAME (ORIGINAL)
+# 4. FUNÇÃO DE FILTRO DO DATAFRAME (SEU CÓDIGO ORIGINAL)
 # -------------------------------------------------
 def filter_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Adiciona uma UI na parte superior de um dataframe para permitir que os usuários filtrem colunas.
+    Adiciona uma interface de usuário para filtrar colunas de um DataFrame.
     """
     modify = st.checkbox("Adicionar os Filtros")
 
@@ -151,7 +150,7 @@ def filter_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # ----------------------------------
-# 5. LÓGICA PRINCIPAL DO APP
+# 5. LÓGICA PRINCIPAL DO APLICATIVO
 # ----------------------------------
 try:
     # Carrega o DataFrame a partir do arquivo CSV
@@ -171,7 +170,7 @@ try:
         label="Baixar Relatório em PDF",
         data=pdf_bytes,
         file_name="relatorio_filtrado_to.pdf",
-        mime='application/pdf' # O mime type correto para PDF
+        mime='application/pdf' # O tipo MIME correto para arquivos PDF
     )
 
 except FileNotFoundError:
