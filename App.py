@@ -17,7 +17,7 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
 # ----------------------------------------------------
-# 2. FUNÇÃO PARA GERAR O PDF (VERSÃO FINAL)
+# 2. FUNÇÃO PARA GERAR O PDF (VERSÃO FINAL CORRIGIDA)
 # ----------------------------------------------------
 def dataframe_to_pdf(df: pd.DataFrame) -> bytes:
     """
@@ -69,8 +69,8 @@ def dataframe_to_pdf(df: pd.DataFrame) -> bytes:
             )
         pdf.ln(row_height) # Pula para a próxima linha ao final de cada linha de dados
         
-    # Retorna o PDF como bytes diretamente (sintaxe correta para versões novas)
-    return pdf.output()
+    # CORREÇÃO FINAL: Garante que o output seja do tipo 'bytes' e não 'bytearray'
+    return bytes(pdf.output())
 
 # ----------------------------------
 # 3. CONFIGURAÇÃO DA PÁGINA STREAMLIT
